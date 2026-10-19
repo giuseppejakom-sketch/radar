@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="es" data-modo="estatico" data-datos="https://raw.githubusercontent.com/giuseppejakom-sketch/radar/main/">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Radar en vivo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%23e5484d'/%3E%3Ccircle cx='16' cy='16' r='14' fill='none' stroke='%23e5484d' stroke-width='2' opacity='.4'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f5f4f0; --surface: #ffffff; --ink: #18181b; --muted: #66666e; --soft: #8d8d95; --line: #e5e2db; --chip: #efede7;
+  --accent: #e5484d; --global: #2563eb; --polemica: #e2540a; --nuevo: #15803d; --tv: #7c3aed; --amber: #c27803;
+  --fresco: #fff4e0; --top: rgba(245, 244, 240, .88);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e0f11; --surface: #17181b; --ink: #ececee; --muted: #a0a0a8; --soft: #7b7b84; --line: #26272c; --chip: #212226;
+    --accent: #ff6369; --global: #6b9bff; --polemica: #ff8a3d; --nuevo: #4ade80; --tv: #b794ff; --amber: #f5b13d;
+    --fresco: #2a2214; --top: rgba(14, 15, 17, .86);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.45 -apple-system, "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+a { color: inherit; text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 2px; }
+button { font: inherit; color: inherit; }
+.marco { max-width: 720px; margin: 0 auto; padding: 0 16px; }
+
+/* Cabecera fija */
+.top { position: sticky; top: 0; z-index: 5; background: var(--top); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top); }
+.fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; }
+.marca { display: flex; align-items: center; gap: 10px; min-width: 0; }
+h1 { margin: 0; font-size: 20px; letter-spacing: -.02em; font-weight: 750; }
+.vivo { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 750; letter-spacing: .08em; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 3px 8px 3px 7px; border-radius: 99px; white-space: nowrap; }
+.punto { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.vivo.ok .punto { animation: late 1.6s ease-out infinite; }
+.vivo.leyendo { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); }
+.vivo.leyendo .punto { animation: late .7s ease-in-out infinite alternate; }
+.vivo.caido { color: var(--soft); background: var(--chip); }
+@keyframes late { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
+.icono { flex: none; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; cursor: pointer; }
+.icono:hover { border-color: var(--soft); }
+.icono svg { width: 18px; height: 18px; }
+.icono.girando svg { animation: gira 1s linear infinite; }
+@keyframes gira { to { transform: rotate(360deg); } }
+.estado { margin: 4px 0 12px; font-size: 13px; color: var(--muted); }
+.estado b { color: var(--ink); font-weight: 600; }
+
+.tabs { display: flex; gap: 4px; background: var(--chip); padding: 3px; border-radius: 11px; margin-bottom: 12px; }
+.tabs button { flex: 1; border: 0; background: transparent; padding: 7px 8px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px var(--line); }
+.n { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; }
+.n:empty { display: none; }
+.filtros { display: flex; gap: 8px; padding-top: 12px; padding-bottom: 4px; }
+.filtros select, .filtros input { min-width: 0; height: 36px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; padding: 0 10px; }
+.filtros select { flex: 0 1 46%; }
+.filtros input { flex: 1; }
+.filtros :focus-visible, .tabs button:focus-visible, .icono:focus-visible { outline: 2px solid var(--global); outline-offset: 1px; }
+
+/* Ahora: titulares en orden de llegada */
+main { padding: 6px 0 24px; }
+.items { list-style: none; margin: 0; padding: 0; }
+.item { display: grid; grid-template-columns: 64px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); position: relative; }
+.item.nuevo::before { content: ""; position: absolute; left: -16px; top: 0; bottom: 0; width: 3px; background: var(--accent); border-radius: 0 3px 3px 0; }
+.item.nuevo { background: linear-gradient(90deg, var(--fresco), transparent 70%); }
+.cuando { font-size: 12px; color: var(--soft); line-height: 1.35; padding-top: 1px; }
+.cuando .h { display: block; font-size: 14px; font-weight: 650; color: var(--ink); }
+.meta { font-size: 12.5px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.meta b { color: var(--ink); font-weight: 600; }
+.tit { display: block; font-weight: 600; margin-top: 2px; overflow-wrap: anywhere; }
+.tag { font-size: 10.5px; font-weight: 750; letter-spacing: .05em; padding: 1px 6px; border-radius: 5px; background: var(--chip); color: var(--muted); }
+.tag.tv { color: var(--tv); background: color-mix(in srgb, var(--tv) 12%, transparent); }
+.tag.global { color: var(--global); background: color-mix(in srgb, var(--global) 12%, transparent); }
+.tag.polemica { color: var(--polemica); background: color-mix(in srgb, var(--polemica) 13%, transparent); }
+.tag.nueva, .tag.suma { color: var(--nuevo); background: color-mix(in srgb, var(--nuevo) 13%, transparent); }
+.ir { margin-top: 6px; border: 0; background: none; padding: 0; font-size: 12.5px; font-weight: 600; color: var(--global); cursor: pointer; }
+.ir:hover { text-decoration: underline; }
+
+/* Historias agrupadas */
+.card { display: grid; grid-template-columns: 30px 1fr; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 14px 12px 10px; margin-bottom: 10px; scroll-margin-top: 150px; }
+.card.foco { box-shadow: 0 0 0 2px var(--global); }
+.rank { font-size: 18px; font-weight: 750; color: var(--soft); text-align: right; line-height: 1.3; }
+.badges { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 5px; }
+.badges:empty { display: none; }
+.linea { font-size: 12.5px; color: var(--muted); }
+.linea b { color: var(--ink); font-weight: 600; }
+.card .tit { font-size: 16.5px; line-height: 1.32; letter-spacing: -.005em; margin: 0 0 6px; }
+.paises { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.pais { font-size: 11px; font-weight: 650; color: var(--muted); background: var(--chip); border-radius: 5px; padding: 1px 6px; }
+.senales { font-size: 12.5px; color: var(--muted); margin-top: 7px; }
+.senales i { font-style: normal; color: var(--polemica); }
+details { margin-top: 9px; }
+summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--global); list-style: none; display: inline-flex; align-items: center; gap: 5px; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: ""; width: 0; height: 0; border-left: 5px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform .15s; }
+details[open] summary::before { transform: rotate(90deg); }
+.subs { list-style: none; margin: 8px 0 0; padding: 0; border-left: 2px solid var(--line); }
+.subs li { padding: 6px 0 6px 12px; }
+.subs .tit { font-weight: 500; font-size: 14px; }
+.todos { font-size: 12px; color: var(--soft); margin: 6px 0 0 14px; }
+
+.mas { display: block; width: 100%; margin: 14px 0 0; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-size: 14px; font-weight: 600; color: var(--global); cursor: pointer; }
+.vacio { text-align: center; color: var(--muted); padding: 48px 12px; }
+.vacio b { display: block; color: var(--ink); font-size: 16px; margin-bottom: 4px; }
+.cargando { height: 66px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, transparent, var(--chip), transparent) 0 0 / 200% 100%; animation: brillo 1.4s linear infinite; }
+@keyframes brillo { to { background-position: -200% 0; } }
+footer { font-size: 12.5px; color: var(--soft); padding: 8px 0 calc(32px + env(safe-area-inset-bottom)); }
+footer summary { color: var(--soft); font-weight: 500; }
+footer ul { margin: 6px 0 0; padding-left: 18px; }
+.aviso { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 10px; font-size: 13.5px; max-width: calc(100vw - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.2); z-index: 9; }
+@media (max-width: 420px) {
+  .item { grid-template-columns: 52px 1fr; gap: 10px; }
+  .card { grid-template-columns: 22px 1fr; padding-left: 8px; }
+  .rank { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="marco">
+    <div class="fila">
+      <div class="marca">
+        <h1>Radar</h1>
+        <span class="vivo caido" id="vivo"><span class="punto"></span><span id="vivoTxt">CONECTANDO</span></span>
+      </div>
+      <button class="icono" id="actualizar" type="button" aria-label="Leer los medios ahora" title="Leer los medios ahora">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      </button>
+    </div>
+    <p class="estado" id="estado">Conectando con la PC…</p>
+    <nav class="tabs" role="tablist" aria-label="Vista">
+      <button role="tab" data-tab="ahora" type="button">Ahora</button>
+      <button role="tab" data-tab="historias" type="button">Historias</button>
+      <button role="tab" data-tab="alertas" type="button">Alertas <span class="n" id="nAlertas"></span></button>
+    </nav>
+  </div>
+</header>
+<div class="marco filtros">
+  <select id="pais" aria-label="País"><option value="">Todos los países</option></select>
+  <input id="q" type="search" placeholder="Buscar…" aria-label="Buscar" autocomplete="off">
+</div>
+<main class="marco" id="lista"><div class="cargando"></div><div class="cargando"></div><div class="cargando"></div></main>
+<footer class="marco" id="pie"></footer>
+<div class="aviso" id="aviso" role="status" hidden></div>
+
+<script>
+const TITULO = "Radar en vivo";
+// Modo estático = la copia pública en GitHub Pages (en-vivo.mjs le pone data-modo="estatico"): lee datos.json y
+// estado.json que sube la PC en vez de la API local, y no puede pedir una lectura nueva.
+const ESTATICO = document.documentElement.dataset.modo === "estatico";
+// Los datos se leen directo de raw.githubusercontent.com (data-datos): llega antes que Pages o githack, que cachean más.
+const BASE_DATOS = document.documentElement.dataset.datos ?? "";
+// Orden y códigos cortos de los países del radar (Windows no muestra banderas emoji).
+const CODIGOS = { "Perú": "PE", Argentina: "AR", Bolivia: "BO", Brasil: "BR", Chile: "CL", Colombia: "CO", "Costa Rica": "CR", Cuba: "CU", Ecuador: "EC", "El Salvador": "SV", Guatemala: "GT", Honduras: "HN", "México": "MX", Nicaragua: "NI", "Panamá": "PA", Paraguay: "PY", "Puerto Rico": "PR", "República Dominicana": "DO", Uruguay: "UY", Venezuela: "VE", "Estados Unidos": "EE. UU.", Regional: "Regional", Mundo: "Mundo" };
+const NOMBRE_PAIS = { Regional: "Internacional (es)", Mundo: "Mundo" };
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const href = (u) => (/^https?:\/\//i.test(u ?? "") ? esc(u) : "#");
+const norm = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const guardado = {
+  get: (k) => { try { return localStorage.getItem("radar." + k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem("radar." + k, v); } catch {} },
+};
+
+let estado = null;
+let datos = null;
+let offset = 0; // diferencia de reloj con la PC
+let conectado = null;
+let tab = ["ahora", "historias", "alertas"].includes(guardado.get("tab")) ? guardado.get("tab") : "ahora";
+let pais = guardado.get("pais") || "";
+let q = "";
+const PAGINA = 150;
+let limite = PAGINA; // titulares de "Ahora" que se pintan; "Mostrar más" suma otra página
+// Titulares publicados después de `corte` se marcan como nuevos: es la última vez que dejaste la página.
+let corte = Number(guardado.get("visto")) || Infinity;
+let ocultoDesde = null;
+// URLs que llegaron en una lectura nueva mientras mirabas la página: también se marcan como nuevas.
+const frescas = new Set();
+let reloj = null;
+const abiertas = new Set();
+
+const ahora = () => Date.now() + offset;
+const hace = (t) => {
+  if (!t) return "";
+  const m = Math.floor(Math.max(0, ahora() - t) / 60000);
+  if (m < 1) return "ahora";
+  if (m < 60) return `hace ${m} min`;
+  const h = Math.floor(m / 60);
+  return h < 24 ? `hace ${h} h` : `hace ${Math.floor(h / 24)} d`;
+};
+const hora = (t) => new Date(t).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const nombrePais = (p) => NOMBRE_PAIS[p] ?? p;
+
+// ---------- Cabecera ----------
+function pintarEstado() {
+  const vivo = $("#vivo");
+  const txt = $("#vivoTxt");
+  const linea = $("#estado");
+  const boton = $("#actualizar");
+  boton.classList.toggle("girando", !!estado?.leyendo);
+  if (conectado === false) {
+    vivo.className = "vivo caido"; txt.textContent = "SIN CONEXIÓN";
+    if (ESTATICO) linea.innerHTML = datos ? `Sin internet · mostrando lo de <b>${esc(hace(datos.generado))}</b>` : "No pude cargar las noticias. Revisa tu conexión.";
+    else linea.innerHTML = datos ? `No llego a la PC · mostrando lo de <b>${esc(hace(datos.generado))}</b>` : "No llego a la PC. ¿Está prendida y con el radar corriendo?";
+    return;
+  }
+  if (!estado) return;
+  const viejo = datos && ahora() - datos.generado > (estado.cadaMin * 2 + 5) * 60000;
+  if (ESTATICO && datos) {
+    vivo.className = viejo ? "vivo caido" : "vivo ok"; txt.textContent = viejo ? "EN PAUSA" : "EN VIVO";
+    linea.innerHTML = viejo ? `Última lectura <b>${esc(hace(datos.generado))}</b> · el radar está en pausa` : `Actualizado <b>${esc(hace(datos.generado))}</b> · se actualiza cada ${estado.cadaMin} min`;
+    return;
+  }
+  if (estado.leyendo) {
+    vivo.className = "vivo leyendo"; txt.textContent = "LEYENDO";
+    linea.innerHTML = datos ? `Leyendo los medios… · última lectura <b>${esc(hace(datos.generado))}</b>` : "Leyendo los medios por primera vez (tarda menos de un minuto)…";
+  } else if (datos) {
+    vivo.className = viejo ? "vivo leyendo" : "vivo ok"; txt.textContent = viejo ? "ATRASADO" : "EN VIVO";
+    const falta = Math.max(0, Math.ceil((estado.proxima - ahora()) / 60000));
+    linea.innerHTML = `Actualizado <b>${esc(hace(datos.generado))}</b> · próxima en ${falta <= 1 ? "1 min" : falta + " min"}` + (estado.error ? " · falló la última lectura" : "");
+  }
+}
+
+// ---------- Filtros ----------
+function pintarPaises() {
+  if (!datos) return;
+  const hay = new Set(datos.ultimas.map((n) => n.pais));
+  for (const h of datos.historias) h.titulares.forEach((t) => hay.add(t.pais));
+  if (pais && !hay.has(pais)) hay.add(pais);
+  const orden = Object.keys(CODIGOS).filter((p) => hay.has(p));
+  for (const p of hay) if (!orden.includes(p)) orden.push(p);
+  $("#pais").innerHTML = `<option value="">Todos los países</option>` + orden.map((p) => `<option value="${esc(p)}"${p === pais ? " selected" : ""}>${esc(nombrePais(p))}</option>`).join("");
+}
+const pasaTexto = (...textos) => !q || textos.some((t) => norm(t).includes(q));
+const filtrarHistorias = (lista) =>
+  lista.filter((h) => (!pais || h.paises.includes(pais) || h.titulares.some((t) => t.pais === pais)) && pasaTexto(h.titulo, ...h.titulares.map((t) => t.titulo), ...h.listaMedios));
+
+// ---------- Listas ----------
+function itemAhora(n) {
+  const h = n.historia === null ? null : datos.historias[n.historia];
+  return `<li class="item${n.fecha > corte || frescas.has(n.url) ? " nuevo" : ""}">
+    <div class="cuando"><span class="h">${esc(hora(n.fecha))}</span><span data-t="${n.fecha}">${esc(hace(n.fecha))}</span></div>
+    <div>
+      <div class="meta"><b>${esc(n.medio)}</b><span>· ${esc(nombrePais(n.pais))}</span>${n.tv ? `<span class="tag tv">TV</span>` : ""}</div>
+      <a class="tit" href="${href(n.url)}" target="_blank" rel="noopener noreferrer">${esc(n.titulo)}</a>
+      ${h ? `<button class="ir" type="button" data-h="${n.historia}">En ${h.medios} medios${h.alerta.length ? " · " + h.alerta.map((a) => (a === "global" ? "global" : "polémica")).join(" y ") : ""} →</button>` : ""}
+    </div>
+  </li>`;
+}
+function tarjeta(h) {
+  const i = datos.historias.indexOf(h);
+  const badges = [
+    h.alerta.includes("global") && `<span class="tag global">GLOBAL</span>`,
+    h.alerta.includes("polemica") && `<span class="tag polemica">POLÉMICA</span>`,
+    h.nueva && `<span class="tag nueva">NUEVA</span>`,
+    h.suma > 0 && `<span class="tag suma" title="Titulares nuevos desde la lectura anterior">+${h.suma} ${h.suma === 1 ? "titular" : "titulares"}</span>`,
+    h.deporte && `<span class="tag">DEPORTE</span>`,
+  ].filter(Boolean).join("");
+  const paises = h.paises.slice(0, 14).map((p) => `<span class="pais" title="${esc(p)}">${esc(CODIGOS[p] ?? p)}</span>`).join("") + (h.paises.length > 14 ? `<span class="pais">+${h.paises.length - 14}</span>` : "");
+  const senales = [h.polemica.length && `polémica: <i>${esc(h.polemica.slice(0, 5).join(", "))}</i>`, h.impacto.length && `impacto: ${esc(h.impacto.slice(0, 4).join(", "))}`].filter(Boolean).join(" · ");
+  const meta = [`<b>${h.medios} medios</b>`, h.paises.length && `${h.paises.length} ${h.paises.length === 1 ? "país" : "países"}`, h.tv && `${h.tv} TV`, h.ultima && `último <span data-t="${h.ultima}">${esc(hace(h.ultima))}</span>`].filter(Boolean).join(" · ");
+  const subs = h.titulares.map((t) => `<li>
+      <div class="meta"><b>${esc(t.medio)}</b><span>· ${esc(nombrePais(t.pais))}</span>${t.tv ? `<span class="tag tv">TV</span>` : ""}${t.fecha ? `<span>· <span data-t="${t.fecha}">${esc(hace(t.fecha))}</span></span>` : ""}</div>
+      <a class="tit" href="${href(t.url)}" target="_blank" rel="noopener noreferrer">${esc(t.titulo)}</a>
+    </li>`).join("");
+  return `<article class="card" id="h-${i}">
+    <div class="rank">${i + 1}</div>
+    <div>
+      <div class="badges">${badges}</div>
+      <a class="tit" href="${href(h.url)}" target="_blank" rel="noopener noreferrer">${esc(h.titulo)}</a>
+      <div class="linea">${meta}</div>
+      ${paises ? `<div class="paises">${paises}</div>` : ""}
+      ${senales ? `<div class="senales">${senales}</div>` : ""}
+      <details data-id="${esc(h.id)}"${abiertas.has(h.id) ? " open" : ""}>
+        <summary>Ver titulares (${h.titulares.length})</summary>
+        <ul class="subs">${subs}</ul>
+        <p class="todos">Medios: ${esc(h.listaMedios.join(", "))}</p>
+      </details>
+    </div>
+  </article>`;
+}
+const vacio = (titulo, texto) => `<div class="vacio"><b>${esc(titulo)}</b>${esc(texto)}</div>`;
+
+function pintarLista() {
+  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  if (!datos) return;
+  $("#nAlertas").textContent = datos.historias.filter((h) => h.alerta.length).length || "";
+  const lista = $("#lista");
+  const filtro = pais || q;
+  if (tab === "ahora") {
+    const ns = datos.ultimas.filter((n) => (!pais || n.pais === pais) && pasaTexto(n.titulo, n.medio));
+    const mas = ns.length > limite ? `<button class="mas" type="button" id="mas">Mostrar más (${ns.length - limite} restantes)</button>` : "";
+    lista.innerHTML = ns.length ? `<ul class="items">${ns.slice(0, limite).map(itemAhora).join("")}</ul>${mas}` : filtro ? vacio("Nada con ese filtro", "Prueba con otro país o palabra.") : vacio("Sin titulares recientes", "En las últimas 6 horas no llegó nada con fecha.");
+  } else {
+    const base = tab === "alertas" ? datos.historias.filter((h) => h.alerta.length) : datos.historias;
+    const hs = filtrarHistorias(base);
+    lista.innerHTML = hs.length ? hs.map(tarjeta).join("") : filtro ? vacio("Nada con ese filtro", "Prueba con otro país o palabra.") : tab === "alertas" ? vacio("Sin alertas ahora", "Ninguna historia pasa los umbrales de global o polémica.") : vacio("Sin historias", "Todavía no hay titulares que se repitan entre medios.");
+  }
+}
+function pintarPie() {
+  if (!datos) return;
+  const f = datos.fallos;
+  $("#pie").innerHTML = `<p>${datos.total.toLocaleString("es-PE")} titulares de las últimas ${datos.horas} h · ${datos.medios - f.length}/${datos.medios} medios leídos en ${datos.segundos} s · se lee sola cada ${estado?.cadaMin ?? 10} min.</p>` +
+    (f.length ? `<details><summary>${f.length} ${f.length === 1 ? "fuente falló" : "fuentes fallaron"}</summary><ul>${f.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></details>` : "");
+}
+function pintar() {
+  pintarEstado();
+  pintarPaises();
+  pintarLista();
+  pintarPie();
+}
+function tic() {
+  document.querySelectorAll("[data-t]").forEach((el) => (el.textContent = hace(Number(el.dataset.t))));
+  pintarEstado();
+}
+
+// ---------- Datos ----------
+async function pedir(url, opciones) {
+  const r = await fetch(url, { cache: "no-store", ...opciones });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+function conexion(ok) {
+  if (conectado === ok) return;
+  conectado = ok;
+  pintarEstado();
+}
+// En la copia pública, estado.json es diminuto (se consulta seguido) y datos.json solo se baja cuando cambia.
+const estadoEstatico = async () => {
+  const e = await pedir(`${BASE_DATOS}estado.json?t=${Date.now()}`);
+  return { ahora: Date.now(), generado: e.generado, leyendo: false, proxima: 0, error: null, cadaMin: e.cadaMin ?? 10 };
+};
+const apiEstatica = async () => {
+  const d = await pedir(`${BASE_DATOS}datos.json?t=${Date.now()}`);
+  return { ahora: Date.now(), generado: d.generado, leyendo: false, proxima: 0, error: null, cadaMin: d.cadaMin ?? 10, datos: d };
+};
+async function cargar() {
+  const r = ESTATICO ? await apiEstatica() : await pedir("/api");
+  offset = r.ahora - Date.now();
+  estado = r;
+  if (!r.datos) return pintarEstado();
+  if (datos) {
+    const conocidas = new Set(datos.ultimas.map((n) => n.url));
+    const masVieja = datos.ultimas.at(-1)?.fecha ?? 0;
+    for (const n of r.datos.ultimas) if (!conocidas.has(n.url) && n.fecha >= masVieja) frescas.add(n.url);
+  }
+  datos = r.datos;
+  if (document.hidden && ocultoDesde) {
+    const n = datos.ultimas.filter((x) => x.fecha > ocultoDesde).length;
+    document.title = n ? `(${n}) ${TITULO}` : TITULO;
+  }
+  pintar();
+}
+async function sondear() {
+  clearTimeout(reloj);
+  try {
+    const e = ESTATICO ? await estadoEstatico() : await pedir("/api/estado");
+    conexion(true);
+    offset = e.ahora - Date.now();
+    const cambio = e.generado && e.generado !== datos?.generado;
+    estado = e;
+    if (cambio) await cargar();
+    else pintarEstado();
+  } catch {
+    conexion(false);
+  }
+  reloj = setTimeout(sondear, ESTATICO ? 60000 : estado?.leyendo || conectado === false ? 4000 : 15000);
+}
+
+let avisoReloj = null;
+function aviso(texto) {
+  const el = $("#aviso");
+  el.textContent = texto;
+  el.hidden = false;
+  clearTimeout(avisoReloj);
+  avisoReloj = setTimeout(() => (el.hidden = true), 3200);
+}
+
+// ---------- Eventos ----------
+document.querySelector(".tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-tab]");
+  if (!b) return;
+  tab = b.dataset.tab;
+  guardado.set("tab", tab);
+  limite = PAGINA;
+  pintarLista();
+  window.scrollTo({ top: 0 });
+});
+$("#pais").addEventListener("change", (e) => {
+  pais = e.target.value;
+  guardado.set("pais", pais);
+  limite = PAGINA;
+  pintarLista();
+});
+let qReloj = null;
+$("#q").addEventListener("input", (e) => {
+  clearTimeout(qReloj);
+  qReloj = setTimeout(() => {
+    q = norm(e.target.value.trim());
+    limite = PAGINA;
+    pintarLista();
+  }, 150);
+});
+$("#lista").addEventListener("click", (e) => {
+  if (e.target.id === "mas") {
+    limite += PAGINA;
+    return pintarLista();
+  }
+  const b = e.target.closest("button[data-h]");
+  if (!b) return;
+  const h = datos.historias[Number(b.dataset.h)];
+  tab = "historias";
+  guardado.set("tab", tab);
+  abiertas.add(h.id);
+  if (pais && !filtrarHistorias([h]).length) { pais = ""; guardado.set("pais", ""); pintarPaises(); }
+  if (q && !filtrarHistorias([h]).length) { q = ""; $("#q").value = ""; }
+  pintarLista();
+  const card = document.getElementById("h-" + b.dataset.h);
+  if (card) {
+    card.scrollIntoView({ block: "start" });
+    card.classList.add("foco");
+    setTimeout(() => card.classList.remove("foco"), 1800);
+  }
+});
+document.addEventListener("toggle", (e) => {
+  const id = e.target.dataset?.id;
+  if (!id) return;
+  e.target.open ? abiertas.add(id) : abiertas.delete(id);
+}, true);
+$("#actualizar").addEventListener("click", async () => {
+  if (ESTATICO) {
+    const antes = datos?.generado;
+    await sondear();
+    if (datos && conectado) aviso(datos.generado !== antes ? "Llegaron noticias nuevas." : `Ya está al día: la última lectura fue ${hace(datos.generado)}.`);
+    return;
+  }
+  try {
+    const r = await pedir("/api/actualizar", { method: "POST" });
+    conexion(true);
+    estado = { ...estado, ...r };
+    if (r.reciente) aviso(`Ya está al día: la última lectura fue ${hace(r.generado)}.`);
+    pintarEstado();
+    clearTimeout(reloj);
+    reloj = setTimeout(sondear, 2500);
+  } catch {
+    conexion(false);
+    aviso("No llego a la PC.");
+  }
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    ocultoDesde = ahora();
+    guardado.set("visto", String(ocultoDesde));
+  } else {
+    if (ocultoDesde) corte = ocultoDesde;
+    frescas.clear();
+    document.title = TITULO;
+    pintarLista();
+    sondear();
+  }
+});
+window.addEventListener("pagehide", () => guardado.set("visto", String(ahora())));
+
+pintarLista();
+cargar().catch(() => conexion(false)).finally(() => {
+  reloj = setTimeout(sondear, ESTATICO ? 60000 : estado?.leyendo ? 3000 : 15000);
+});
+setInterval(tic, 30000);
+</script>
+</body>
+</html>
